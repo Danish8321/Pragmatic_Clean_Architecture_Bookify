@@ -71,4 +71,70 @@ public sealed class Booking : Entity
 
         return booking;
     }
+
+    public Result Confirm(DateTime utcNow)
+    {
+        if (Status != BookingStatus.Reserved)
+        {
+            return Result.Failure(BookingErrors.NotReserved);
+        }
+
+        Status = BookingStatus.Confirmed;
+        ConfirmedOnUtc = utcNow;
+
+        RaiseDomainEvents(new BookingConfirmedDomainEvent(Id));
+
+        return Result.Success();
+    }
+
+    public Result Reject(DateTime utcNow)
+    {
+        if (Status != BookingStatus.Reserved)
+        {
+            return Result.Failure(BookingErrors.NotReserved);
+        }
+
+        Status = BookingStatus.Rejected;
+        ConfirmedOnUtc = utcNow;
+
+        RaiseDomainEvents(new BookingRejectedDomainEvent(Id));
+
+        return Result.Success();
+    }
+
+    public Result Complete(DateTime utcNow)
+    {
+        if (Status != BookingStatus.Confirmed)
+        {
+            return Result.Failure(BookingErrors.NotConfirmed);
+        }
+
+        Status = BookingStatus.Completed;
+        ConfirmedOnUtc = utcNow;
+
+        RaiseDomainEvents(new BookingCompletedDomainEvent(Id));
+
+        return Result.Success();
+    }
+
+    public Result Cancel(DateTime utcNow)
+    {
+        if (Status != BookingStatus.Confirmed)
+        {
+            return Result.Failure(BookingErrors.NotConfirmed);
+        }
+
+        var currentDate = DateOnly.FromDateTime(utcNow);
+        if (currentDate > Duration.Start)
+        {
+            return Result.Failure(BookingErrors.AlreadyStarted);
+        }
+
+        Status = BookingStatus.Cancelled;
+        ConfirmedOnUtc = utcNow;
+
+        RaiseDomainEvents(new BookingCancelledDomainEvent(Id));
+
+        return Result.Success();
+    }
 }
